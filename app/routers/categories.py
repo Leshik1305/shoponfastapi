@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.categories import Category as CategoryModel
 from app.schemas import Category as CategorySchema, CategoryCreate
-from app.db_depends import get_db
+from app.db_depends import get_async_db
 
 
 router = APIRouter(
@@ -14,70 +14,85 @@ router = APIRouter(
 
 
 @router.get("/", response_model=list[CategorySchema])
-async def get_all_categories(db: Session = Depends(get_db)):
-    stmt = select(CategoryModel).where(CategoryModel.is_active)
-    categories = db.scalars(stmt).all()
+async def get_all_categories(db: AsyncSession = Depends(get_async_db)):
+    result = await db.scalars(select(CategoryModel).where(CategoryModel.is_active))
+    categories = result.all()
     return categories
 
 
 @router.post("/", response_model=CategorySchema, status_code=status.HTTP_201_CREATED)
-async def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
+async def create_category(
+    category: CategoryCreate, db: AsyncSession = Depends(get_async_db)
+):
     if category.parent_id is not None:
         stmt = select(CategoryModel).where(
-            CategoryModel.id == category.parent_id, CategoryModel.is_active
+            CategoryModel.id == category.parent_id,
+            CategoryModel.is_active,
         )
-        parent = db.scalars(stmt).first()
+        parent = await db.scalar(stmt)
         if not parent:
-            raise HTTPException(status_code=400, detail="Parent category not found")
-
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Parent category not found",
+            )
     db_category = CategoryModel(**category.model_dump())
     db.add(db_category)
-    db.commit()
-    db.refresh(db_category)
+    await db.commit()
+    await db.refresh(db_category)
     return db_category
 
 
 @router.put("/{category_id}", response_model=CategorySchema)
 async def update_category(
-    category_id: int, category: CategoryCreate, db: Session = Depends(get_db)
+    category_id: int, category: CategoryCreate, db: AsyncSession = Depends(get_async_db)
 ):
     stmt = select(CategoryModel).where(
         CategoryModel.id == category_id, CategoryModel.is_active
     )
-    category_db = db.scalars(stmt).first()
-    if not category:
+    result = await db.scalars(stmt)
+    category_db = result.first()
+    if not category_db:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
         )
     if category.parent_id is not None:
         parent_stmt = select(CategoryModel).where(
-            CategoryModel.id == category_id, CategoryModel.is_active
+            CategoryModel.id == category.parent_id, CategoryModel.is_active
         )
-        parent = db.scalars(parent_stmt).first()
+        result = await db.scalars(parent_stmt)
+        parent = result.first()
         if not parent:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Parent category not found",
             )
-    db.execute(
+    update_data = category.model_dump(exclude_unset=True)
+    await db.execute(
         update(CategoryModel)
         .where(CategoryModel.id == category_id)
-        .values(**category.model_dump())
+        .values(**update_data)
     )
-    db.commit()
-    db.refresh(category_db)
+    await db.commit()
+    await db.refresh(category_db)
     return category_db
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_200_OK)
-async def delete_category(category_id: int, db: Session = Depends(get_db)):
+async def delete_category(category_id: int, db: AsyncSession = Depends(get_async_db)):
     stmt = select(CategoryModel).where(
         CategoryModel.id == category_id, CategoryModel.is_active
     )
-    category = db.scalars(stmt).first()
+    result = await db.scalars(stmt)
+    category = result.first()
     if not category:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
         )
-    category.is_active = False
-    db.commit()
-    return {"status": "success", "message": "Category marked as inactive"}
+    await db.execute(
+        update(CategoryModel)
+        .where(CategoryModel.id == category_id)
+        .values(is_active=False)
+    )
+    await db.commit()
+    await db.refresh(category)
+    return category
