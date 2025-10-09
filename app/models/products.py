@@ -1,8 +1,9 @@
-from sqlalchemy import String, Boolean, Float, Integer, ForeignKey
+from decimal import Decimal
+
+from sqlalchemy import String, Boolean, Float, Integer, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.schemas import Category
 
 
 class Product(Base):
@@ -19,6 +20,8 @@ class Product(Base):
         ForeignKey("categories.id"), nullable=False
     )
     seller_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-
-    category: Mapped["Category"] = relationship(back_populates="products")
+    rating: Mapped[float] = mapped_column(Float, default=0.0)
+    # rating: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0)
+    category: Mapped["Category"] = relationship("Category", back_populates="products")
     seller: Mapped["User"] = relationship("User", back_populates="products")
+    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="product")

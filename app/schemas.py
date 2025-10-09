@@ -1,5 +1,17 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from typing import Optional
+from datetime import datetime
+from decimal import Decimal
+from enum import IntEnum
+
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, PositiveInt
+from typing import Optional, Annotated
+
+
+class GradeEnum(IntEnum):
+    one = 1
+    two = 2
+    three = 3
+    four = 4
+    five = 5
 
 
 class CategoryCreate(BaseModel):
@@ -54,6 +66,7 @@ class Product(BaseModel):
     stock: int = Field(..., description="Количество товара на складе")
     category_id: int = Field(..., description="ID категории")
     is_active: bool = Field(..., description="Активность товара")
+    rating: Decimal = Field(..., description="Рейтинг товара")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -73,4 +86,25 @@ class User(BaseModel):
     email: EmailStr
     is_active: bool
     role: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CreateReview(BaseModel):
+    product_id: Annotated[PositiveInt, Field(..., description="Идентификатор продукта")]
+    comment: Annotated[Optional[str], Field(default=None, description="Текст отзыва")]
+    grade: Annotated[GradeEnum, Field(default=GradeEnum.five, description="Оценка")]
+
+
+class Review(BaseModel):
+    id: Annotated[int, Field(..., description="Уникальный идентификатор отзыва")]
+    user_id: Annotated[int, Field(..., description="Идентификатор автора")]
+    product_id: Annotated[int, Field(..., description="Идентификатор продукта")]
+    comment: Annotated[Optional[str], Field(None, description="Текст отзыва")]
+    comment_date: Annotated[
+        datetime,
+        Field(default_factory=datetime.now, description="Дата и время создания"),
+    ]
+    grade: Annotated[int, Field(..., description="Оценка")]
+    is_active: Annotated[bool, Field(True, description="Активность отзыва")]
+
     model_config = ConfigDict(from_attributes=True)

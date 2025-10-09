@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models.users import User as UserModel
+from app.models import User as UserModel
 from app.config import SECRET_KEY, ALGORITHM
 from app.db_depends import get_async_db
 
@@ -78,3 +78,11 @@ async def get_current_seller(current_user: UserModel = Depends(get_current_user)
             detail="Only sellers can perform this action",
         )
     return current_user
+
+
+async def get_current_buyer(current_user: UserModel = Depends(get_current_user)):
+    if current_user.role != "buyer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only buyers can perform this action",
+        )
