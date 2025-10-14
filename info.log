@@ -1,0 +1,4 @@
+Log: [9fa90f65-6314-4924-b169-d572cd29ad81:2025-10-12T20:18:02.187633+0300 - INFO - Successfully accessed /]
+Log: [1a41e4d2-2a2d-4860-a24f-a1aee3357ee6:2025-10-12T20:18:29.630542+0300 - INFO - Successfully accessed /docs]
+Log: [938e5e1e-87af-461b-bb53-8de18fa9ddb9:2025-10-12T20:18:30.047703+0300 - INFO - Successfully accessed /openapi.json]
+Log: [7d790ede-bbd4-4bb0-acd4-cfd9dea1c8ce:2025-10-12T20:19:01.063008+0300 - WARNING - Request to /cat failed]

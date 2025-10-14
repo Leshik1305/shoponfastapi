@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import get_current_user
+from app.auth import get_current_user, get_current_seller
 from app.db_depends import get_async_db
 from app.models import (
     Product as ProductModel,
@@ -46,6 +46,7 @@ async def create_product(
     db: AsyncSession = Depends(get_async_db),
     current_user: UserModel = Depends(get_current_user),
 ):
+    await get_current_seller(current_user)
     stmt = select(CategoryModel).where(
         CategoryModel.id == product.category_id,
         CategoryModel.is_active,
@@ -56,6 +57,7 @@ async def create_product(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Category not found"
         )
+
     db_product = ProductModel(**product.model_dump(), seller_id=current_user.id)
     db.add(db_product)
     await db.commit()
